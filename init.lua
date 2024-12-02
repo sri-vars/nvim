@@ -41,6 +41,12 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup({
   spec = {
     { "catppuccin/nvim", name = "catppuccin", priority = 1000 },
+    {
+        "nvim-tree/nvim-tree.lua",
+        dependencies = {
+            "nvim-tree/nvim-web-devicons"
+        }
+    }
   },
   install = { colorscheme = { "catppuccin" } },
   checker = { enabled = true },
@@ -108,3 +114,25 @@ require("catppuccin").setup({
 	},
 })
 vim.cmd.colorscheme("catppuccin")
+
+-- .------------------------.
+-- | NvimTree Configuration |
+-- '------------------------'
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
+require("nvim-tree").setup({
+  sort = {
+    sorter = "case_sensitive",
+  },
+  view = {
+    width = 38,
+    side = "right"
+  },
+  renderer = {
+    group_empty = true,
+  },
+  filters = {
+    dotfiles = true,
+  },
+})
