@@ -77,6 +77,77 @@ require("lazy").setup({
 			},
 			version = "^1.0.0", -- optional: only update when a new 1.x version is released
 		},
+		{
+			"folke/flash.nvim",
+			event = "VeryLazy",
+			opts = {},
+            -- stylua: ignore
+            keys = {
+                { "t", mode = { "n", "x", "o" }, function() require("flash").jump() end, desc = "Flash" },
+                { "T", mode = { "n", "x", "o" }, function() require("flash").treesitter() end, desc = "Flash Treesitter" },
+                { "r", mode = "o", function() require("flash").remote() end, desc = "Remote Flash" },
+                { "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter Search" },
+                { "<c-s>", mode = { "c" }, function() require("flash").toggle() end, desc = "Toggle Flash Search" },
+            },
+		},
+		{
+			"folke/trouble.nvim",
+			opts = {}, -- for default options, refer to the configuration section for custom setup.
+			cmd = "Trouble",
+			keys = {
+				{
+					"<leader>xx",
+					"<cmd>Trouble diagnostics toggle<cr>",
+					desc = "Diagnostics (Trouble)",
+				},
+				{
+					"<leader>xX",
+					"<cmd>Trouble diagnostics toggle filter.buf=0<cr>",
+					desc = "Buffer Diagnostics (Trouble)",
+				},
+				{
+					"<leader>cs",
+					"<cmd>Trouble symbols toggle focus=false<cr>",
+					desc = "Symbols (Trouble)",
+				},
+				{
+					"<leader>cl",
+					"<cmd>Trouble lsp toggle focus=false win.position=right<cr>",
+					desc = "LSP Definitions / references / ... (Trouble)",
+				},
+				{
+					"<leader>xL",
+					"<cmd>Trouble loclist toggle<cr>",
+					desc = "Location List (Trouble)",
+				},
+				{
+					"<leader>xQ",
+					"<cmd>Trouble qflist toggle<cr>",
+					desc = "Quickfix List (Trouble)",
+				},
+			},
+			{
+				"ThePrimeagen/harpoon",
+				branch = "harpoon2",
+				dependencies = { "nvim-lua/plenary.nvim" },
+			},
+			{
+				"nvim-telescope/telescope.nvim",
+				tag = "0.1.8",
+				dependencies = { "nvim-lua/plenary.nvim" },
+			},
+			{
+				"tpope/vim-dadbod",
+			},
+			{
+				"rcarriga/nvim-notify",
+			},
+			{
+				"mrcjkb/rustaceanvim",
+				version = "^5", -- Recommended
+				lazy = false, -- This plugin is already lazy
+			},
+		},
 	},
 	install = { colorscheme = { "catppuccin" } },
 	checker = { enabled = true },
@@ -194,6 +265,12 @@ require("mason-lspconfig").setup({
 -- '-----------------------'
 local cmp = require("cmp")
 
+local has_words_before = function()
+	unpack = unpack or table.unpack
+	local line, col = unpack(vim.api.nvim_win_get_cursor(0))
+	return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
+end
+
 cmp.setup({
 	snippet = {
 		-- REQUIRED - you must specify a snippet engine
@@ -206,33 +283,29 @@ cmp.setup({
 		end,
 	},
 	window = {
-		documentation = {
-			border = { "┌", "─", "┐", "│", "┘", "─", "└", "│" },
-		},
-		completion = {
-			border = { "┌", "─", "┐", "│", "┘", "─", "└", "│" },
-		},
+		completion = cmp.config.window.bordered(),
+		documentation = cmp.config.window.bordered(),
 	},
 	mapping = cmp.mapping.preset.insert({
-		["<Tab>"] = cmp.mapping(function(fallback)
-			if cmp.visible() then
-				cmp.select_next_item()
-			elseif luasnip.expand_or_jumpable() then
-				luasnip.expand_or_jump()
-			else
-				fallback()
+		["<Tab>"] = function(fallback)
+			if not cmp.select_next_item() then
+				if vim.bo.buftype ~= "prompt" and has_words_before() then
+					cmp.complete()
+				else
+					fallback()
+				end
 			end
-		end, { "i", "s" }),
+		end,
 
-		["<S-Tab>"] = cmp.mapping(function(fallback)
-			if cmp.visible() then
-				cmp.select_prev_item()
-			elseif luasnip.jumpable(-1) then
-				luasnip.jump(-1)
-			else
-				fallback()
+		["<S-Tab>"] = function(fallback)
+			if not cmp.select_prev_item() then
+				if vim.bo.buftype ~= "prompt" and has_words_before() then
+					cmp.complete()
+				else
+					fallback()
+				end
 			end
-		end, { "i", "s" }),
+		end,
 		["<C-b>"] = cmp.mapping.scroll_docs(-4),
 		["<C-f>"] = cmp.mapping.scroll_docs(4),
 		["<C-Space>"] = cmp.mapping.complete(),
@@ -463,7 +536,7 @@ require("gitsigns").setup({
 	},
 	signs_staged_enable = true,
 	signcolumn = true, -- Toggle with `:Gitsigns toggle_signs`
-	numhl = false, -- Toggle with `:Gitsigns toggle_numhl`
+	numhl = true, -- Toggle with `:Gitsigns toggle_numhl`
 	linehl = false, -- Toggle with `:Gitsigns toggle_linehl`
 	word_diff = false, -- Toggle with `:Gitsigns toggle_word_diff`
 	watch_gitdir = {
@@ -688,3 +761,40 @@ map("n", "<Space>bw", "<Cmd>BufferOrderByWindowNumber<CR>", opts)
 -- Other:
 -- :BarbarEnable - enables barbar (enabled by default)
 -- :BarbarDisable - very bad command, should never be used
+
+-- .-----------------------.
+-- | Harpoon Configuration |
+-- '-----------------------'
+local harpoon = require("harpoon")
+
+-- REQUIRED
+harpoon:setup()
+-- REQUIRED
+
+vim.keymap.set("n", "<leader>a", function()
+	harpoon:list():add()
+end)
+vim.keymap.set("n", "<C-e>", function()
+	harpoon.ui:toggle_quick_menu(harpoon:list())
+end)
+
+vim.keymap.set("n", "<C-h>", function()
+	harpoon:list():select(1)
+end)
+vim.keymap.set("n", "<C-t>", function()
+	harpoon:list():select(2)
+end)
+vim.keymap.set("n", "<C-n>", function()
+	harpoon:list():select(3)
+end)
+vim.keymap.set("n", "<C-s>", function()
+	harpoon:list():select(4)
+end)
+
+-- Toggle previous & next buffers stored within Harpoon list
+vim.keymap.set("n", "<C-S-P>", function()
+	harpoon:list():prev()
+end)
+vim.keymap.set("n", "<C-S-N>", function()
+	harpoon:list():next()
+end)
